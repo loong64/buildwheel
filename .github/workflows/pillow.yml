@@ -18,7 +18,7 @@ on:
       build_requires:
         description: 'Build requires'
         required: true
-        default: 'libtiff-devel libjpeg-devel openjpeg2-devel zlib-devel freetype-devel lcms2-devel libwebp-devel tcl-devel tk-devel harfbuzz-devel fribidi-devel libraqm-devel libimagequant-devel libxcb-devel'
+        default: 'ccache libtiff-devel libjpeg-devel openjpeg2-devel zlib-devel freetype-devel lcms2-devel libwebp-devel tcl-devel tk-devel harfbuzz-devel fribidi-devel libraqm-devel libimagequant-devel libxcb-devel'
 
 jobs:
   build:
@@ -46,6 +46,8 @@ jobs:
         run: |
           sudo mkdir -p /home/runner/data/cache/.cache /home/runner/data/cache/dnf
           sudo chown -R root:docker /home/runner/data/cache
+          sudo mkdir -p /tmp/pip
+          sudo wget -O /tmp/pip/pip.conf https://github.com/loong64/buildwheel/raw/refs/heads/master/pip.conf
 
       - name: Setup QEMU
         run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
@@ -58,10 +60,11 @@ jobs:
           CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
+            mv /host/tmp/pip /root/.pip &&
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_ENVIRONMENT_LINUX: USE_CCACHE=1 PATH="/usr/lib/ccache:${PATH}"
 
       - name: Upload wheels
         run: |

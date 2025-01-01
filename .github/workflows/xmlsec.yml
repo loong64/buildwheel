@@ -1,12 +1,8 @@
-name: msgpack
+name: xmlsec
 
 on:
   workflow_dispatch:
     inputs:
-      app_name:
-        description: 'Build package'
-        required: true
-        default: 'msgpack'
       app_version:
         description: 'Build version'
         required: true
@@ -15,6 +11,14 @@ on:
         description: 'Build manylinux'
         required: true
         default: 'cp3{9,10,11,12,13}-manylinux_*'
+      build_requires:
+        description: 'Build requires'
+        required: true
+        default: 'ccache libxml2-devel xmlsec1-devel xmlsec1-openssl-devel libtool-ltdl-devel'
+
+env: 
+  app_name: xmlsec
+  app_repo: xmlsec/python-xmlsec
 
 jobs:
   build:
@@ -22,21 +26,23 @@ jobs:
     steps:
       - name: Checkout Code
         run: |
+          version="${{ github.event.inputs.app_version }}"
           if [ "${{ github.event.inputs.app_version }}" == "latest" ]; then
-            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }} -d ../
-          else
-            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }}==${{ github.event.inputs.app_version }} -d ../
+            version=$(curl -s https://api.github.com/repos/${{ env.app_repo }}/releases/latest | jq -r '.tag_name')
+            if [ -z "${version}" ] || [ "${version}" == "null" ]; then
+              exit 1
+            fi
           fi
-          tar -xf ../*.tar.gz -C . --strip-components=1
+          wget -O - https://github.com/${{ env.app_repo }}/releases/download/${version}/${{ env.app_name }}-${version}.tar.gz | tar -xz --strip-components=1
 
       - name: Cache build
         uses: actions/cache@v4
         with:
           path: |
             /home/runner/data/cache
-          key: ${{ runner.os }}-${{ github.event.inputs.app_name }}
+          key: ${{ runner.os }}-${{ env.app_name }}
           restore-keys: |
-            ${{ runner.os }}-${{ github.event.inputs.app_name }}
+            ${{ runner.os }}-${{ env.app_name }}
 
       - name: Setup Cache
         run: |
@@ -57,7 +63,10 @@ jobs:
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
             mv /host/tmp/pip /root/.pip &&
-            ln -sf /host/home/runner/data/cache/.cache /root/.cache
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
+            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
+            yum install -y ${{ github.event.inputs.build_requires }}
+          CIBW_ENVIRONMENT_LINUX: USE_CCACHE=1 PATH="/usr/lib/ccache:${PATH}"
 
       - name: Upload wheels
         run: |
