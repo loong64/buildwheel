@@ -1,4 +1,4 @@
-name: cibuildwheel Custom
+name: Custom cibuildwheel
 
 on:
   workflow_dispatch:
@@ -37,15 +37,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /data/cache
+            /home/runner/data/cache
           key: ${{ runner.os }}-${{ github.event.inputs.app_name }}
           restore-keys: |
             ${{ runner.os }}-${{ github.event.inputs.app_name }}
 
       - name: Setup Cache
         run: |
-          sudo mkdir -p /data/cache/.cache /data/cache/dnf
-          sudo chmod -R 777 /data/cache
+          sudo mkdir -p /home/runner/data/cache/.cache /home/runner/data/cache/dnf
+          sudo chown -R root:docker /home/runner/data/cache
 
       - name: Setup QEMU
         run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
@@ -58,9 +58,8 @@ jobs:
           CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
-            rm -rf ~/.cache /var/cache/dnf &&
-            ln -sf /host/data/cache/.cache ~/.cache &&
-            ln -sf /host/data/cache/dnf /var/cache/dnf &&
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
+            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             curl -sSf https://sh.rustup.rs | sh -s -- -y &&
             yum install -y ${{ github.event.inputs.build_requires }}
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
@@ -72,3 +71,7 @@ jobs:
         env:
           TWINE_USERNAME: ${{ github.repository_owner }}
           TWINE_PASSWORD: ${{ secrets.GL_TOKEN }}
+      
+      - name: Cache permissions
+        run: |
+          sudo chown -R runner:docker /home/runner/data/cache

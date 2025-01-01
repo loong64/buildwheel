@@ -1,0 +1,76 @@
+name: cffi
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'Build package'
+        required: true
+        default: 'cffi'
+      app_version:
+        description: 'Build version'
+        required: true
+        default: 'latest'
+      build_manylinux:
+        description: 'Build manylinux'
+        required: true
+        default: 'cp3{9,10,11,12,13}-manylinux_*'
+      build_requires:
+        description: 'Build requires'
+        required: true
+        default: 'libffi-devel'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        run: |
+          if [ "${{ github.event.inputs.app_version }}" == "latest" ]; then
+            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }} -d ../
+          else
+            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }}==${{ github.event.inputs.app_version }} -d ../
+          fi
+          tar -xf ../*.tar.gz -C . --strip-components=1
+
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/runner/data/cache
+          key: ${{ runner.os }}-${{ github.event.inputs.app_name }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.event.inputs.app_name }}
+
+      - name: Setup Cache
+        run: |
+          sudo mkdir -p /home/runner/data/cache/.cache /home/runner/data/cache/dnf
+          sudo chown -R root:docker /home/runner/data/cache
+
+      - name: Setup QEMU
+        run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
+
+      - name: Build wheels
+        uses: loong64/cibuildwheel@main
+        env:
+          CIBW_MANYLINUX_LOONGARCH64_IMAGE: manylinux_2_38
+          CIBW_ARCHS: loongarch64
+          CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
+          CIBW_TEST_SKIP: "*"
+          CIBW_BEFORE_ALL_LINUX: >
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
+            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
+            yum install -y ${{ github.event.inputs.build_requires }}
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+
+      - name: Upload wheels
+        run: |
+          pip install twine
+          twine upload --repository-url https://gitlab.com/api/v4/projects/65746188/packages/pypi wheelhouse/*.whl
+        env:
+          TWINE_USERNAME: ${{ github.repository_owner }}
+          TWINE_PASSWORD: ${{ secrets.GL_TOKEN }}
+
+      - name: Cache permissions
+        run: |
+          sudo chown -R runner:docker /home/runner/data/cache
