@@ -1,4 +1,4 @@
-name: cmake
+name: contourpy
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       app_name:
         description: 'Build package'
         required: true
-        default: 'cmake'
+        default: 'contourpy'
       app_version:
         description: 'Build version'
         required: true
@@ -14,11 +14,7 @@ on:
       build_manylinux:
         description: 'Build manylinux'
         required: true
-        default: 'cp39-manylinux_*'
-      build_requires:
-        description: 'Build requires'
-        required: true
-        default: 'openssl-devel'
+        default: 'cp3{10,11,12,13}-manylinux_*'
 
 jobs:
   build:
@@ -61,9 +57,7 @@ jobs:
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
             mv /host/tmp/pip /root/.pip &&
-            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
-            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
-            yum install -y ${{ github.event.inputs.build_requires }}
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache
 
       - name: Upload wheels
         run: |

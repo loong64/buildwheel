@@ -1,4 +1,4 @@
-name: cmake
+name: nh3
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       app_name:
         description: 'Build package'
         required: true
-        default: 'cmake'
+        default: 'nh3'
       app_version:
         description: 'Build version'
         required: true
@@ -15,10 +15,6 @@ on:
         description: 'Build manylinux'
         required: true
         default: 'cp39-manylinux_*'
-      build_requires:
-        description: 'Build requires'
-        required: true
-        default: 'openssl-devel'
 
 jobs:
   build:
@@ -62,8 +58,8 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: >
             mv /host/tmp/pip /root/.pip &&
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
-            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
-            yum install -y ${{ github.event.inputs.build_requires }}
+            curl -sSf https://sh.rustup.rs | sh -s -- -y
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
 
       - name: Upload wheels
         run: |

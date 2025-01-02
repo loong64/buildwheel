@@ -18,7 +18,7 @@ on:
       build_requires:
         description: 'Build requires'
         required: true
-        default: 'ccache libtiff-devel libjpeg-devel openjpeg2-devel zlib-devel freetype-devel lcms2-devel libwebp-devel tcl-devel tk-devel harfbuzz-devel fribidi-devel libraqm-devel libimagequant-devel libxcb-devel'
+        default: 'libtiff-devel libjpeg-devel openjpeg2-devel zlib-devel freetype-devel lcms2-devel libwebp-devel tcl-devel tk-devel harfbuzz-devel fribidi-devel libraqm-devel libimagequant-devel libxcb-devel'
 
 jobs:
   build:
@@ -64,7 +64,6 @@ jobs:
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: USE_CCACHE=1 PATH="/usr/lib/ccache:${PATH}"
 
       - name: Upload wheels
         run: |

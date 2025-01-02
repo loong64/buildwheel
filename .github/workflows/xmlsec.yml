@@ -14,7 +14,7 @@ on:
       build_requires:
         description: 'Build requires'
         required: true
-        default: 'ccache libxml2-devel xmlsec1-devel xmlsec1-openssl-devel libtool-ltdl-devel'
+        default: 'libxml2-devel xmlsec1-devel xmlsec1-openssl-devel libtool-ltdl-devel'
 
 env: 
   app_name: xmlsec
@@ -66,7 +66,6 @@ jobs:
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: USE_CCACHE=1 PATH="/usr/lib/ccache:${PATH}"
 
       - name: Upload wheels
         run: |
