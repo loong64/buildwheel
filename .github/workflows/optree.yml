@@ -1,4 +1,4 @@
-name: numpy
+name: optree
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       app_name:
         description: 'Build package'
         required: true
-        default: 'numpy'
+        default: 'optree'
       app_version:
         description: 'Build version'
         required: true
@@ -15,10 +15,6 @@ on:
         description: 'Build manylinux'
         required: true
         default: 'cp3{9,10,11,12,13}-manylinux_*'
-      build_requires:
-        description: 'Build requires'
-        required: true
-        default: 'openblas-devel lapack-devel'
 
 jobs:
   build:
@@ -58,11 +54,8 @@ jobs:
           CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
-            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
-            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
-            curl -sSf https://sh.rustup.rs | sh -s -- -y &&
-            yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: PATH="$HOME/.cargo/bin:$PATH" PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache
+          CIBW_ENVIRONMENT_LINUX: PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |
@@ -71,7 +64,7 @@ jobs:
         env:
           TWINE_USERNAME: ${{ github.repository_owner }}
           TWINE_PASSWORD: ${{ secrets.GL_TOKEN }}
-
+      
       - name: Cache permissions
         run: |
           sudo chown -R runner:docker /home/runner/data/cache

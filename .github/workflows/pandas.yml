@@ -1,12 +1,8 @@
-name: numpy
+name: pandas
 
 on:
   workflow_dispatch:
     inputs:
-      app_name:
-        description: 'Build package'
-        required: true
-        default: 'numpy'
       app_version:
         description: 'Build version'
         required: true
@@ -15,10 +11,10 @@ on:
         description: 'Build manylinux'
         required: true
         default: 'cp3{9,10,11,12,13}-manylinux_*'
-      build_requires:
-        description: 'Build requires'
-        required: true
-        default: 'openblas-devel lapack-devel'
+
+env: 
+  app_name: pandas
+  app_repo: pandas-dev/pandas
 
 jobs:
   build:
@@ -26,21 +22,24 @@ jobs:
     steps:
       - name: Checkout Code
         run: |
+          version="${{ github.event.inputs.app_version }}"
           if [ "${{ github.event.inputs.app_version }}" == "latest" ]; then
-            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }} -d ../
-          else
-            pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }}==${{ github.event.inputs.app_version }} -d ../
+            version=$(curl -s https://api.github.com/repos/${{ env.app_repo }}/releases/latest | jq -r '.tag_name')
+            if [ -z "${version}" ] || [ "${version}" == "null" ]; then
+              exit 1
+            fi
           fi
-          tar -xf ../*.tar.gz -C . --strip-components=1
+          version="${version/v/}"
+          wget -O - https://github.com/${{ env.app_repo }}/releases/download/v${version}/${{ env.app_name }}-${version}.tar.gz | tar -xz --strip-components=1
 
       - name: Cache build
         uses: actions/cache@v4
         with:
           path: |
             /home/runner/data/cache
-          key: ${{ runner.os }}-${{ github.event.inputs.app_name }}
+          key: ${{ runner.os }}-${{ env.app_name }}
           restore-keys: |
-            ${{ runner.os }}-${{ github.event.inputs.app_name }}
+            ${{ runner.os }}-${{ env.app_name }}
 
       - name: Setup Cache
         run: |
@@ -58,11 +57,8 @@ jobs:
           CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
-            ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
-            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
-            curl -sSf https://sh.rustup.rs | sh -s -- -y &&
-            yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: PATH="$HOME/.cargo/bin:$PATH" PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
+            ln -sf /host/home/runner/data/cache/.cache /root/.cache
+          CIBW_ENVIRONMENT_LINUX: PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |
@@ -71,7 +67,7 @@ jobs:
         env:
           TWINE_USERNAME: ${{ github.repository_owner }}
           TWINE_PASSWORD: ${{ secrets.GL_TOKEN }}
-
+      
       - name: Cache permissions
         run: |
           sudo chown -R runner:docker /home/runner/data/cache

@@ -46,8 +46,6 @@ jobs:
         run: |
           sudo mkdir -p /home/runner/data/cache/.cache /home/runner/data/cache/dnf
           sudo chown -R root:docker /home/runner/data/cache
-          sudo mkdir -p /tmp/pip
-          sudo wget -O /tmp/pip/pip.conf https://github.com/loong64/buildwheel/raw/refs/heads/master/pip.conf
 
       - name: Setup QEMU
         run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
@@ -60,12 +58,11 @@ jobs:
           CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
-            mv /host/tmp/pip /root/.pip &&
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             curl -sSf https://sh.rustup.rs | sh -s -- -y &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_ENVIRONMENT_LINUX: PATH="$HOME/.cargo/bin:$PATH" PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |
