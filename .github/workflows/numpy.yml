@@ -62,7 +62,9 @@ jobs:
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             curl -sSf https://sh.rustup.rs | sh -s -- -y &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: PATH="$HOME/.cargo/bin:$PATH" PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
+          CIBW_ENVIRONMENT_LINUX: >
+            PATH="$HOME/.cargo/bin:$PATH"
+            PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |
