@@ -56,7 +56,9 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: >
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             curl -sSf https://sh.rustup.rs | sh -s -- -y
-          CIBW_ENVIRONMENT_LINUX: PATH="$HOME/.cargo/bin:$PATH" PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
+          CIBW_ENVIRONMENT_LINUX: >
+            PATH="$HOME/.cargo/bin:$PATH" 
+            PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |

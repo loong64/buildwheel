@@ -1,4 +1,4 @@
-name: Custom cibuildwheel
+name: pyyaml
 
 on:
   workflow_dispatch:
@@ -6,15 +6,23 @@ on:
       app_name:
         description: 'Build package'
         required: true
-        default: ''
+        default: 'pyyaml'
       app_version:
         description: 'Build version'
         required: true
         default: 'latest'
+      libyaml_version:
+        description: 'libyaml version'
+        required: true
+        default: '0.2.5'
+      build_manylinux:
+        description: 'Build manylinux'
+        required: true
+        default: 'cp3{9,10,11,12,13}-manylinux_*'
       build_requires:
         description: 'Build requires'
         required: true
-        default: 'curl'
+        default: 'libyaml-devel'
 
 jobs:
   build:
@@ -28,6 +36,14 @@ jobs:
             pip download --no-deps --no-binary :all: ${{ github.event.inputs.app_name }}==${{ github.event.inputs.app_version }} -d ../
           fi
           tar -xf ../*.tar.gz -C . --strip-components=1
+          if [ ! -d "packaging" ] || [ ! -f "packaging/build/libyaml.sh" ]; then
+            mkdir -p packaging/build
+            wget -O packaging/build/libyaml.sh https://github.com/yaml/pyyaml/raw/refs/tags/6.0.1/packaging/build/libyaml.sh
+            chmod +x packaging/build/libyaml.sh
+          else
+            sed -i 's@exit 1@yum install -y perl-Test-Harness@g' packaging/build/libyaml.sh
+          fi
+          sed -i 's@make test-all@# make test-all@' packaging/build/libyaml.sh
 
       - name: Cache build
         uses: actions/cache@v4
@@ -45,18 +61,36 @@ jobs:
 
       - name: Setup QEMU
         run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
+      
+      - name: Build libyaml
+        run: >
+          docker run --rm
+          --volume "$(pwd):/io"
+          --env LIBYAML_REF=${{ github.event.inputs.libyaml_version }}
+          --env LIBYAML_REPO=https://github.com/yaml/libyaml
+          --workdir /io
+          ghcr.io/loong64/manylinux_2_38_loongarch64
+          bash /io/packaging/build/libyaml.sh
+      
+      - name: ensure output is world readable (or cache fill fails with Permission Denied)
+        run: sudo chmod -R a+r ./libyaml/
 
       - name: Build wheels
         uses: loong64/cibuildwheel@main
         env:
           CIBW_MANYLINUX_LOONGARCH64_IMAGE: manylinux_2_38
           CIBW_ARCHS: loongarch64
+          CIBW_BUILD: ${{ github.event.inputs.build_manylinux }}
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
             ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
             yum install -y ${{ github.event.inputs.build_requires }}
-          CIBW_ENVIRONMENT_LINUX: PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
+          CIBW_ENVIRONMENT_LINUX: >
+            PYYAML_FORCE_CYTHON=1
+            PYYAML_FORCE_LIBYAML=1
+            LD_LIBRARY_PATH=../libyaml/src/.libs
+            PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
         run: |
