@@ -1,4 +1,4 @@
-name: Custom cibuildwheel
+name: pyzmq
 
 on:
   workflow_dispatch:
@@ -6,15 +6,11 @@ on:
       app_name:
         description: 'Build package'
         required: true
-        default: ''
+        default: 'pyzmq'
       app_version:
         description: 'Build version'
         required: true
         default: 'latest'
-      build_requires:
-        description: 'Build requires'
-        required: true
-        default: 'curl'
 
 jobs:
   build:
@@ -55,8 +51,7 @@ jobs:
           CIBW_TEST_SKIP: "*"
           CIBW_BEFORE_ALL_LINUX: >
             ln -sf /host/home/runner/data/cache/.cache /root/.cache &&
-            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf &&
-            yum install -y ${{ github.event.inputs.build_requires }}
+            ln -sf /host/home/runner/data/cache/dnf /var/cache/dnf
           CIBW_ENVIRONMENT_LINUX: PIP_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple
 
       - name: Upload wheels
